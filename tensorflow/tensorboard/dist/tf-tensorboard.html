@@ -56,7 +56,7 @@ var TF;
         // The names of TensorBoard tabs.
         Globals.TABS = [
             'scalars', 'images', 'audio', 'graphs', 'distributions', 'histograms',
-            'embeddings'
+            'embeddings', 'weights'
         ];
         // If true, TensorBoard stores its hash in the URI state.
         // If false, tab switching in TensorBoard will not update location hash,
@@ -5680,6 +5680,87 @@ var VZ;
         return this._colorScale.scale.bind(this._colorScale);
       },
     });
+  </script>
+</dom-module>
+
+<dom-module id="tf-histogram-dashboard" assetpath="../tf-weights-dashboard/">
+  <template>
+    <div id="plumbing">
+      <tf-color-scale id="colorScale" runs="[[runs]]" out-color-scale="{{_colorScale}}"></tf-color-scale>
+    </div>
+
+    <tf-dashboard-layout>
+      <div class="sidebar">
+        <tf-sidebar-helper backend="[[backend]]" categories="{{_categories}}" color-scale="[[_colorScale]]" run2tag="[[run2tag]]" runs="[[runs]]" selected-runs="{{_selectedRuns}}" show-download-links="{{_showDownloadLinks}}">
+          <div class="sidebar-section">
+            <tf-option-selector id="histogramModeSelector" name="Histogram Mode" selected-id="{{_histogramMode}}">
+              <paper-button id="overlay">overlay</paper-button>
+              <paper-button id="offset">offset</paper-button>
+            </tf-option-selector>
+          </div>
+          <div class="sidebar-section">
+            <tf-option-selector id="timePropertySelector" name="Offset Time Axis" selected-id="{{_timeProperty}}">
+              <paper-button id="step">step</paper-button>
+              <paper-button id="relative">relative</paper-button>
+              <paper-button id="wall_time">wall</paper-button>
+            </tf-option-selector>
+        
+      </div>
+      </tf-sidebar-helper></div>
+
+      <div class="center">
+        <tf-panes-helper categories="[[_categories]]" color-scale="[[_colorScale]]" data-type="[[dataType]]" data-provider="[[dataProvider]]" run2tag="[[run2tag]]" selected-runs="[[_selectedRuns]]" repeat-for-runs="">
+          <template>
+            <vz-histogram-timeseries time-property="[[_timeProperty]]" mode="[[_histogramMode]]" color-scale="[[_colorScaleFunction]]"></vz-histogram-timeseries>
+          </template>
+        </tf-panes-helper>
+      </div>
+    </tf-dashboard-layout>
+
+    <style include="dashboard-style"></style>
+    <style>
+      tf-panes-helper {
+        --card-expanded-height: 500px;
+        --card-expanded-width: 700px;
+      }
+    </style>
+  </template>
+
+  <script>
+      Polymer({
+          is: "tf-histogram-dashboard",
+          behaviors: [
+              TF.Dashboard.ReloadBehavior("tf-chart-scaffold"),
+              TF.Backend.Behavior,
+          ],
+          properties: {
+              backend: Object,
+              dataType: {
+                  type: String,
+                  value: "histogram"
+              },
+              _histogramMode: {
+                  type: String,
+                  value: "offset"
+              },
+              _timeProperty: {
+                  type: String,
+                  value: "step"
+              },
+              _colorScaleFunction: {
+                  type: Function,
+                  computed: "_getColorScaleFunction(_colorScale)"
+              },
+          },
+          attached: function() {
+              this.async(function() {
+                  this.fire("rendered");
+              });
+          },
+          _getColorScaleFunction: function() {
+              return this._colorScale.scale.bind(this._colorScale);
+          },
+      });
   </script>
 </dom-module>
 
@@ -17962,6 +18043,10 @@ var TF;
           <tf-histogram-dashboard id="histograms" backend="[[_backend]]"></tf-histogram-dashboard>
         </template>
 
+        <template is="dom-if" if="[[_modeIsWeights(mode)]]">
+          <tf-weights-dashboard id="weights" backend="[[_backend]]"></tf-weights-dashboard>
+        </template>
+
         <template is="dom-if" if="[[_modeIsEmbeddings(mode)]]">
           <vz-projector-dashboard id="projector" route-prefix="/data/plugin/projector">
           </vz-projector-dashboard>
@@ -18114,6 +18199,9 @@ var TF;
       _modeIsHistograms: function(mode) {
         return mode === "histograms";
       },
+        _modeIsWeights: function(mode) {
+            return mode === "weights";
+        },
       selectedDashboard: function() {
         var dashboard = this.$$("#" + this.mode);
         if (dashboard == null) {
